@@ -486,64 +486,55 @@
 
         // ── Dark-theme contrast fix ──
         // Mermaid nodes can carry their own light fill colours even when a dark
-        // theme is selected, making light-coloured fg text invisible.  Walk every
-        // text / foreignObject element; when it sits inside a shape with a light
-        // background, override the text colour so it remains readable.
+        // theme is selected, making light-coloured fg text invisible.
+        // Strategy: find every shape with a light fill, walk up to the nearest
+        // ancestor <g> that also owns text / foreignObject children, then force
+        // all text in that group to a legible dark colour.
         function fixSvgContrast(svg) {
             if (!svg) return;
 
-            // Relative luminance (0 = black, 1 = white)
+            // Relative luminance — handles #hex, rgb() and rgba()
             function lum(color) {
-                let h = (color || '').replace(/^#/, '');
-                if (h.length === 3) h = h.replace(/./g, c => c + c);
-                if (h.length !== 6) return -1;
-                return [0, 2, 4].map(i => {
-                    const v = parseInt(h.slice(i, i + 2), 16) / 255;
-                    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-                }).reduce((L, c, j) => L + c * [0.2126, 0.7152, 0.0722][j], 0);
+                if (!color) return -1;
+                let r, g, b;
+                const m = String(color).match(/rgba?\(\s*([\d.]+)[,\s]\s*([\d.]+)[,\s]\s*([\d.]+)/i);
+                if (m) {
+                    [r, g, b] = [+m[1] / 255, +m[2] / 255, +m[3] / 255];
+                } else {
+                    let h = String(color).replace(/^#/, '');
+                    if (h.length === 3) h = h.replace(/./g, c => c + c);
+                    if (h.length !== 6) return -1;
+                    [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+                }
+                const lin = v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+                return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
             }
 
             const DARK_TEXT = '#1f2328';
-            const SHAPE_TAGS = new Set(['rect', 'circle', 'ellipse', 'polygon', 'path']);
 
-            // Return the first sibling shape fill that is clearly light (lum > 0.3)
-            function lightBgFill(container) {
-                for (const child of container.children) {
-                    if (!SHAPE_TAGS.has(child.tagName.toLowerCase())) continue;
-                    const fill = child.getAttribute('fill') || child.style.fill || '';
-                    if (fill === 'none' || fill === 'transparent' || !fill) continue;
-                    if (lum(fill) > 0.3) return fill;
+            // For every shape with a clearly light fill, darken text in the
+            // nearest ancestor <g> that also contains text or HTML labels.
+            svg.querySelectorAll('rect, circle, ellipse, polygon, path').forEach(shape => {
+                const fill = shape.getAttribute('fill') || shape.style?.fill || '';
+                if (!fill || fill === 'none' || fill === 'transparent') return;
+                if (lum(fill) <= 0.3) return; // dark background — text should be fine
+
+                // Walk up until we find a <g> that owns text/foreignObject
+                let container = shape.parentElement;
+                for (let i = 0; i < 4 && container && container.tagName.toLowerCase() !== 'svg'; i++) {
+                    if (container.querySelector('text, foreignObject')) break;
+                    container = container.parentElement;
                 }
-                return null;
-            }
+                if (!container || container.tagName.toLowerCase() === 'svg') return;
 
-            // Walk up from el, stopping at the SVG root, looking for a <g> that
-            // owns both the target element and a light-background shape sibling.
-            function findLightContainer(el) {
-                let node = el.parentElement;
-                while (node && node.tagName.toLowerCase() !== 'svg') {
-                    if (lightBgFill(node) !== null) return node;
-                    node = node.parentElement;
-                }
-                return null;
-            }
-
-            // Fix SVG text elements
-            svg.querySelectorAll('text, tspan').forEach(textEl => {
-                const fill = textEl.getAttribute('fill') || textEl.style.fill || '';
-                if (!fill || fill === 'none') return;
-                if (lum(fill) < 0.3) return; // already dark — fine
-                if (findLightContainer(textEl)) {
-                    textEl.setAttribute('fill', DARK_TEXT);
-                    textEl.style.fill = DARK_TEXT;
-                }
-            });
-
-            // Fix HTML labels inside <foreignObject>
-            svg.querySelectorAll('foreignObject').forEach(fo => {
-                if (!findLightContainer(fo)) return;
-                fo.querySelectorAll('*').forEach(child => {
-                    if (child.style) child.style.color = DARK_TEXT;
+                // Fix SVG <text> / <tspan>
+                container.querySelectorAll('text, tspan').forEach(t => {
+                    t.setAttribute('fill', DARK_TEXT);
+                    if (t.style) t.style.fill = DARK_TEXT;
+                });
+                // Fix HTML labels inside <foreignObject>
+                container.querySelectorAll('foreignObject *').forEach(el => {
+                    if (el.style) el.style.color = DARK_TEXT;
                 });
             });
         }
