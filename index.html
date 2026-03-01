@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mermaid Viewer — beautiful-mermaid</title>
+    <title>Mermaid Viewer - beautiful-mermaid</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -249,7 +249,7 @@
                         <label class="toggle-label"><input type="checkbox" id="transparentPngToggle" checked /> Transparent PNG</label>
                     </div>
                     <textarea id="codeInput" spellcheck="false" placeholder="Paste Mermaid syntax here…"></textarea>
-                    <p class="hint">Tip — drag &amp; drop a Mermaid file anywhere on the page.</p>
+                    <p class="hint">Tip - drag &amp; drop a Mermaid file anywhere on the page.</p>
                 </div>
             </section>
 
@@ -386,7 +386,7 @@
 
         function resolveThemeColors(name, transparent) {
             const bm = window.beautifulMermaid;
-            const baseName = name.replace(' — Bold', '').toLowerCase();
+            const baseName = name.replace(' - Bold', '').toLowerCase();
             let colors = bm?.THEMES?.[baseName] || bm?.THEMES?.['github-' + baseName] || THEMES[name] || THEMES['Light'];
             const { bold, ...clean } = { ...colors };
             if (transparent) { clean.bg = 'transparent'; clean.transparent = true; }
@@ -493,7 +493,7 @@
         function fixSvgContrast(svg) {
             if (!svg) return;
 
-            // Relative luminance — handles #hex, rgb() and rgba()
+            // Relative luminance - handles #hex, rgb() and rgba()
             function lum(color) {
                 if (!color) return -1;
                 let r, g, b;
@@ -549,7 +549,7 @@
             svg.querySelectorAll('rect, circle, ellipse, polygon, path').forEach(shape => {
                 const fill = getShapeFill(shape);
                 if (!fill || fill === 'none' || fill === 'transparent') return;
-                if (lum(fill) <= 0.3) return; // dark background — text should be fine
+                if (lum(fill) <= 0.3) return; // dark background - text should be fine
 
                 // Walk up until we find a <g> that owns text/foreignObject
                 let container = shape.parentElement;
@@ -862,7 +862,7 @@
                 if (tok !== state.token) return;
                 showSvg(svg);
                 setStatus('ready', 'Ready');
-                el.prevMsg.textContent = `Rendered — theme "${state.theme}"`;
+                el.prevMsg.textContent = `Rendered - theme "${state.theme}"`;
             } catch (e) {
                 if (tok !== state.token) return;
                 showSvg('');
@@ -1019,7 +1019,7 @@
             try {
                 const src = await ensureLib();
                 setStatus('ready', 'Ready');
-                el.prevMsg.textContent = `Renderer loaded — ${src}`;
+                el.prevMsg.textContent = `Renderer loaded - ${src}`;
                 syncUI();
                 await doRender();
             } catch (e) {
