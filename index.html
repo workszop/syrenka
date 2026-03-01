@@ -511,11 +511,14 @@
             }
 
             const DARK_TEXT = '#1f2328';
+            // getComputedStyle resolves CSS-class fills (e.g. .node rect { fill: rgb(…) })
+            // that getAttribute / style.fill cannot see.
+            const cs = shape => shape.ownerDocument?.defaultView?.getComputedStyle(shape);
 
             // For every shape with a clearly light fill, darken text in the
             // nearest ancestor <g> that also contains text or HTML labels.
             svg.querySelectorAll('rect, circle, ellipse, polygon, path').forEach(shape => {
-                const fill = shape.getAttribute('fill') || shape.style?.fill || '';
+                const fill = shape.getAttribute('fill') || shape.style?.fill || cs(shape)?.fill || '';
                 if (!fill || fill === 'none' || fill === 'transparent') return;
                 if (lum(fill) <= 0.3) return; // dark background — text should be fine
 
