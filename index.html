@@ -189,6 +189,31 @@
 
         @media (max-width: 1100px) { .workspace { grid-template-columns: 1fr; } .preview-shell, .preview-center, .empty-state { min-height: 420px; } }
         @media (max-width: 640px) { .app-shell { padding: 16px; } h1 { font-size: 1.35rem; } .controls-row, .controls-row-2, .stats-row { grid-template-columns: 1fr; } textarea { min-height: 260px; } }
+
+        /* ── Dark UI mode (applied when a dark diagram theme is active) ── */
+        html[data-ui-theme="dark"] {
+            --bg-main: #0d1117;
+            --bg-section: #161b22;
+            --accent: #58a6ff;
+            --accent-light: #1c2d40;
+            --text-heading: #e6edf3;
+            --text-body: #8b949e;
+            --border: #30363d;
+            --border-hover: #484f58;
+            --shadow-dropdown: 0 8px 24px rgba(0,0,0,0.5);
+            --danger: #f85149;
+            --danger-bg: #2d1016;
+            --success: #3fb950;
+            --success-bg: #0d2d1a;
+        }
+        html[data-ui-theme="dark"] ::-webkit-scrollbar-thumb { background: #484f58; }
+        html[data-ui-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #6e7681; }
+        html[data-ui-theme="dark"] .dropdown-menu::-webkit-scrollbar-thumb { background: #484f58; }
+        html[data-ui-theme="dark"] .dropdown-trigger:hover { background: #21262d; }
+        html[data-ui-theme="dark"] .hint { color: #6e7681; }
+        html[data-ui-theme="dark"] .empty-state { color: #6e7681; }
+        html[data-ui-theme="dark"] .btn-success { border-color: #1a4731; }
+        html[data-ui-theme="dark"] .btn-success:hover:not(:disabled) { background: #1a4731; }
     </style>
 </head>
 <body>
@@ -611,6 +636,10 @@
             el.stage.style.background = resolveThemeColors(state.theme, false).bg || '#ffffff';
         }
 
+        function updateUiTheme() {
+            document.documentElement.setAttribute('data-ui-theme', isLightTheme(state.theme) ? 'light' : 'dark');
+        }
+
         function updateZoom() {
             const z = state.zoom = clamp(state.zoom || 100, 25, 300);
             el.zoomRange.value = z;
@@ -676,6 +705,7 @@
 
             updateZoom();
             updatePreviewBg();
+            updateUiTheme();
         }
 
         // ── Dropdowns ──
@@ -684,6 +714,7 @@
                 state.theme = v;
                 el.themeStat.textContent = v;
                 updatePreviewBg();
+                updateUiTheme();
                 saveState();
                 setStatus('loading', 'Rendering');
                 el.prevMsg.textContent = `Applying theme "${v}"…`;
