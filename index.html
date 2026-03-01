@@ -511,14 +511,43 @@
             }
 
             const DARK_TEXT = '#1f2328';
-            // getComputedStyle resolves CSS-class fills (e.g. .node rect { fill: rgb(…) })
-            // that getAttribute / style.fill cannot see.
-            const cs = shape => shape.ownerDocument?.defaultView?.getComputedStyle(shape);
+
+            // Build a fill-rule list from the SVG's own <style> block.
+            // Mermaid (github-dark) emits fills as CSS class rules rather than
+            // inline attributes, so getAttribute / style.fill both return empty.
+            // getComputedStyle is unreliable here because CSS variables from the
+            // Mermaid theme may be undefined in the document scope, causing the
+            // computed value to fall back to SVG's default black.
+            // Parsing the text directly and using element.matches() is robust.
+            const fillRules = []; // [{selector, fill}]
+            svg.querySelectorAll('style').forEach(styleEl => {
+                const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+                let m;
+                while ((m = ruleRe.exec(styleEl.textContent || '')) !== null) {
+                    const block = m[2];
+                    const fillMatch = block.match(/(?:^|;)\s*fill\s*:\s*([^;!}\s][^;!}]*)/);
+                    if (!fillMatch) continue;
+                    const fill = fillMatch[1].trim();
+                    m[1].trim().split(',').forEach(sel => {
+                        const s = sel.trim();
+                        if (s) fillRules.push({ selector: s, fill });
+                    });
+                }
+            });
+
+            function getShapeFill(shape) {
+                const inline = shape.getAttribute('fill') || shape.style?.fill || '';
+                if (inline) return inline;
+                for (const { selector, fill } of fillRules) {
+                    try { if (shape.matches(selector)) return fill; } catch (_) {}
+                }
+                return '';
+            }
 
             // For every shape with a clearly light fill, darken text in the
             // nearest ancestor <g> that also contains text or HTML labels.
             svg.querySelectorAll('rect, circle, ellipse, polygon, path').forEach(shape => {
-                const fill = shape.getAttribute('fill') || shape.style?.fill || cs(shape)?.fill || '';
+                const fill = getShapeFill(shape);
                 if (!fill || fill === 'none' || fill === 'transparent') return;
                 if (lum(fill) <= 0.3) return; // dark background - text should be fine
 
