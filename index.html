@@ -375,13 +375,13 @@
 
         // ── Theme definitions ──
         const LIGHT = { bg: '#ffffff', fg: '#1f2328', accent: '#0969da', muted: '#656d76', surface: '#f6f8fa', border: '#d0d7de', line: '#0969da' };
-        const DARK = { bg: '#0d1117', fg: '#e6edf3', accent: '#58a6ff', muted: '#8b949e', surface: '#161b22', border: '#30363d', line: '#58a6ff' };
+        const VIVID = { bg: '#f0fdfa', fg: '#0d0d0d', accent: '#0d9488', muted: '#2dd4bf', surface: '#ccfbf1', border: '#5eead4', line: '#0f766e' };
 
         const THEMES = {
             'Light':        { ...LIGHT, bold: false },
-            'Light - Bold': { ...LIGHT, bold: true },
-            'Dark':         { ...DARK, bold: false },
-            'Dark - Bold':  { ...DARK, bold: true },
+            'Light — Bold': { ...LIGHT, bold: true },
+            'Vivid':        { ...VIVID, bold: false },
+            'Vivid — Bold': { ...VIVID, bold: true },
         };
 
         function resolveThemeColors(name, transparent) {
