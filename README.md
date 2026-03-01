@@ -1,2 +1,3 @@
 # syrenka
-marmaid diagrams using beautifulmermaid (https://github.com/lukilabs/beautiful-mermaid)
+mermaid diagrams using beautiful mermaid code
+(https://github.com/lukilabs/beautiful-mermaid)
