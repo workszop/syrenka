@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Viewer — beautiful-mermaid</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #FFFFFF;
+            --bg-section: #F9F9F9;
+            --accent: #1E3932;
+            --accent-light: #e8efed;
+            --text-heading: #1A1A1A;
+            --text-body: #666666;
+            --border: #F0F0F0;
+            --border-hover: #E0E0E0;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-dropdown: 0 8px 24px rgba(0,0,0,0.12);
+            --transition: 150ms ease;
+            --danger: #b91c1c;
+            --danger-bg: #fef2f2;
+            --success: #047857;
+            --success-bg: #ecfdf5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 15px; line-height: 1.6;
+            color: var(--text-body); background: var(--bg-main);
+            -webkit-font-smoothing: antialiased; min-height: 100vh;
+        }
+
+        ::selection { background: var(--accent); color: white; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-section); }
+        ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
+        .app-shell { max-width: 1440px; margin: 0 auto; padding: 24px; }
+
+        /* Header */
+        .header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap; margin-bottom: 32px;
+            padding-bottom: 24px; border-bottom: 1px solid var(--border);
+        }
+        .header-left { max-width: 640px; }
+        .badge {
+            display: inline-block; padding: 4px 10px; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em; border-radius: var(--radius-sm);
+            background: var(--accent-light); color: var(--accent); margin-bottom: 12px;
+        }
+        h1 { color: var(--text-heading); font-weight: 700; font-size: 1.75rem; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 6px; }
+        .subtitle { color: var(--text-body); font-size: 14px; }
+        .subtitle code { background: var(--bg-section); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 12px; color: var(--text-heading); }
+        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px;
+            font-size: 13px; font-weight: 600; font-family: inherit;
+            border-radius: var(--radius-md); border: none; cursor: pointer;
+            transition: opacity var(--transition), background var(--transition); white-space: nowrap;
+        }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+        .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-heading); }
+        .btn-secondary:hover:not(:disabled) { background: var(--bg-section); }
+        .btn-success { background: var(--success-bg); color: var(--success); border: 1px solid #d1fae5; }
+        .btn-success:hover:not(:disabled) { background: #d1fae5; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        /* Dropdown */
+        .dropdown { position: relative; width: 100%; }
+        .dropdown-trigger {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            width: 100%; height: 40px; padding: 0 12px;
+            font-family: inherit; font-size: 13px; font-weight: 500;
+            color: var(--text-heading); background: var(--bg-section);
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            cursor: pointer; transition: border-color var(--transition); text-align: left;
+        }
+        .dropdown-trigger:hover { border-color: var(--border-hover); background: #f3f4f6; }
+        .dropdown-trigger.open { border-color: var(--accent); background: var(--bg-main); }
+        .dropdown-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .dropdown-chevron { flex-shrink: 0; transition: transform var(--transition); }
+        .dropdown-trigger.open .dropdown-chevron { transform: rotate(180deg); }
+        .dropdown-menu {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000;
+            background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md);
+            box-shadow: var(--shadow-dropdown); max-height: 280px; overflow-y: auto; padding: 4px; list-style: none;
+        }
+        .dropdown-menu.visible { display: block; }
+        .dropdown-menu::-webkit-scrollbar { width: 4px; }
+        .dropdown-menu::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+        .dropdown-item {
+            display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px;
+            font-family: inherit; font-size: 13px; font-weight: 500;
+            color: var(--text-heading); background: transparent; border: none;
+            border-radius: var(--radius-sm); cursor: pointer; text-align: left;
+            transition: background var(--transition);
+        }
+        .dropdown-item:hover { background: var(--bg-section); }
+        .dropdown-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+        .dropdown-item-check { width: 14px; height: 14px; flex-shrink: 0; opacity: 0; }
+        .dropdown-item.active .dropdown-item-check { opacity: 1; color: var(--accent); }
+        .dropdown-item-swatch {
+            width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        /* Layout */
+        .workspace { display: grid; grid-template-columns: minmax(380px, 0.8fr) minmax(520px, 1.2fr); gap: 24px; align-items: start; }
+        .panel { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-main); }
+        .panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 20px 20px 0; }
+        .panel-title { color: var(--text-heading); font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; }
+        .panel-desc { font-size: 13px; color: var(--text-body); margin-top: 2px; }
+        .panel-body { padding: 16px 20px 20px; }
+
+        /* Controls */
+        .controls-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+        .controls-row-2 { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 12px; margin-bottom: 12px; }
+        .field-group { display: flex; flex-direction: column; gap: 4px; }
+        .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-body); }
+
+        input[type="text"] {
+            height: 40px; padding: 0 12px; font-family: inherit; font-size: 13px;
+            color: var(--text-heading); background: var(--bg-section);
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            outline: none; transition: border-color var(--transition); width: 100%;
+        }
+        input[type="text"]:focus { border-color: var(--border-hover); }
+
+        .zoom-strip {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--bg-section); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 4px 10px; height: 40px;
+        }
+        .zoom-strip .btn-sm { padding: 4px 8px; min-width: 32px; justify-content: center; }
+        .zoom-strip input[type="range"] { flex: 1; min-width: 80px; accent-color: var(--accent); height: 4px; background: transparent; border: none; cursor: pointer; }
+        .zoom-strip output { font-size: 12px; font-weight: 600; color: var(--text-heading); min-width: 40px; text-align: right; }
+
+        .toggles { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
+        .toggle-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-body); cursor: pointer; user-select: none; }
+        .toggle-label input[type="checkbox"] { accent-color: var(--accent); }
+
+        textarea {
+            width: 100%; min-height: 440px; resize: vertical; padding: 14px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 13px; line-height: 1.65; color: var(--text-heading);
+            background: var(--bg-section); border: 1px solid var(--border);
+            border-radius: var(--radius-md); outline: none; transition: border-color var(--transition);
+        }
+        textarea:focus { border-color: var(--border-hover); }
+        .hint { margin-top: 8px; font-size: 12px; color: #999; }
+
+        /* Status & errors */
+        .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--text-body); white-space: nowrap; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .status-chip.ready { color: var(--success); }
+        .status-chip.error { color: var(--danger); }
+        .status-chip.loading { color: #b45309; }
+
+        .error-box { margin-bottom: 12px; padding: 12px 16px; background: var(--danger-bg); border: 1px solid #fecaca; border-radius: var(--radius-md); color: var(--danger); font-size: 13px; }
+        .error-box strong { display: block; margin-bottom: 4px; }
+        .error-box pre { margin: 0; white-space: pre-wrap; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; line-height: 1.5; }
+
+        /* Preview */
+        .preview-shell { min-height: 640px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-section); padding: 16px; }
+        .preview-center { min-height: 600px; display: flex; align-items: flex-start; justify-content: center; padding: 16px; }
+        .diagram-stage { transform-origin: top center; transition: transform 0.15s ease; display: inline-block; max-width: none; border-radius: var(--radius-md); padding: 8px; }
+        .diagram-stage svg { display: block; max-width: none; height: auto; }
+        .empty-state { min-height: 600px; display: flex; align-items: center; justify-content: center; color: #999; text-align: center; font-size: 14px; padding: 20px; }
+
+        /* Stats */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+        .stat-card { background: var(--bg-section); border-radius: var(--radius-md); padding: 14px; }
+        .stat-card .label { margin-bottom: 4px; }
+        .stat-card .val { font-size: 13px; font-weight: 600; color: var(--text-heading); word-break: break-word; }
+
+        .hidden { display: none !important; }
+        .file-input-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+        @media (max-width: 1100px) { .workspace { grid-template-columns: 1fr; } .preview-shell, .preview-center, .empty-state { min-height: 420px; } }
+        @media (max-width: 640px) { .app-shell { padding: 16px; } h1 { font-size: 1.35rem; } .controls-row, .controls-row-2, .stats-row { grid-template-columns: 1fr; } textarea { min-height: 260px; } }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="header">
+            <div class="header-left">
+                <div class="badge">beautiful-mermaid viewer</div>
+                <h1>Mermaid Diagram Viewer</h1>
+                <p class="subtitle">Paste Mermaid code, upload a <code>.mmd</code> or <code>.mermaid</code> file, choose a theme, and export as SVG or PNG.</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="uploadBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    Upload file
+                </button>
+                <input class="file-input-hidden" type="file" id="fileInput" accept=".mmd,.mermaid,.txt,.md" />
+            </div>
+        </header>
+
+        <main class="workspace">
+            <section class="panel">
+                <div class="panel-header">
+                    <div><div class="panel-title">Source</div><div class="panel-desc">Edit Mermaid syntax or load an example.</div></div>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary btn-sm" id="renderBtn" disabled>Render</button>
+                        <button class="btn btn-secondary btn-sm" id="copyBtn" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> SVG
+                        </button>
+                        <button class="btn btn-success btn-sm" id="downloadSvgBtn" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> SVG
+                        </button>
+                        <button class="btn btn-success btn-sm" id="downloadPngBtn" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> PNG
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="controls-row">
+                        <div class="field-group"><span class="label">Example</span><div class="dropdown" id="sampleDropdown"></div></div>
+                        <div class="field-group"><span class="label">Theme</span><div class="dropdown" id="themeDropdown"></div></div>
+                        <div class="field-group"><span class="label">File name</span><input type="text" id="fileNameInput" placeholder="diagram.mmd" /></div>
+                    </div>
+                    <div class="controls-row-2">
+                        <div class="field-group">
+                            <span class="label">Zoom</span>
+                            <div class="zoom-strip">
+                                <button class="btn btn-secondary btn-sm" id="zoomOutBtn">&minus;</button>
+                                <button class="btn btn-secondary btn-sm" id="zoomResetBtn">100%</button>
+                                <button class="btn btn-secondary btn-sm" id="zoomInBtn">+</button>
+                                <input type="range" id="zoomRange" min="25" max="300" step="5" value="100" />
+                                <output id="zoomValue">100%</output>
+                            </div>
+                        </div>
+                        <div class="field-group"><span class="label">Export scale</span><div class="dropdown" id="scaleDropdown"></div></div>
+                    </div>
+                    <div class="toggles">
+                        <label class="toggle-label"><input type="checkbox" id="autoRenderToggle" checked /> Auto-render</label>
+                        <label class="toggle-label"><input type="checkbox" id="transparentToggle" /> Transparent BG</label>
+                        <label class="toggle-label"><input type="checkbox" id="transparentPngToggle" checked /> Transparent PNG</label>
+                    </div>
+                    <textarea id="codeInput" spellcheck="false" placeholder="Paste Mermaid syntax here…"></textarea>
+                    <p class="hint">Tip — drag &amp; drop a Mermaid file anywhere on the page.</p>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div><div class="panel-title">Preview</div><div class="panel-desc" id="previewMessage">Loading renderer…</div></div>
+                    <div class="status-chip loading" id="statusChip"><span class="status-dot"></span><span id="statusText">Loading</span></div>
+                </div>
+                <div class="panel-body">
+                    <div class="error-box hidden" id="errorBox"><strong>Render error</strong><pre id="errorText"></pre></div>
+                    <div class="preview-shell" id="previewShell">
+                        <div class="empty-state" id="emptyState">Loading renderer…</div>
+                        <div class="preview-center hidden" id="preview"><div class="diagram-stage" id="diagramStage"></div></div>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stat-card"><div class="label">Renderer</div><div class="val">beautiful-mermaid</div></div>
+                        <div class="stat-card"><div class="label">Theme</div><div class="val" id="themeStat">Light</div></div>
+                        <div class="stat-card"><div class="label">Library source</div><div class="val" id="sourceStat">Not loaded yet</div></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    (() => {
+        // ── SVG icon fragments ──
+        const ICONS = {
+            chevron: '<svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+            check: '<svg class="dropdown-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+            copied: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied'
+        };
+
+        // ── Dropdown component ──
+        const allDropdowns = [];
+
+        class Dropdown {
+            constructor(el, { onChange, renderItem } = {}) {
+                this.el = el;
+                this.items = [];
+                this.value = null;
+                this._open = false;
+                this._onChange = onChange;
+                this._renderItem = renderItem;
+
+                this.trigger = Object.assign(document.createElement('button'), {
+                    type: 'button', className: 'dropdown-trigger',
+                    innerHTML: `<span class="dropdown-trigger-text">Select…</span>${ICONS.chevron}`
+                });
+                this.menu = Object.assign(document.createElement('ul'), {
+                    className: 'dropdown-menu'
+                });
+                this.menu.setAttribute('role', 'listbox');
+                el.append(this.trigger, this.menu);
+
+                this.trigger.addEventListener('click', e => {
+                    e.preventDefault(); e.stopPropagation();
+                    this._open ? this.close() : this.open();
+                });
+                this.menu.addEventListener('click', e => {
+                    e.preventDefault(); e.stopPropagation();
+                    const btn = e.target.closest('.dropdown-item');
+                    if (btn?.dataset.value != null) this.select(btn.dataset.value);
+                });
+                allDropdowns.push(this);
+            }
+
+            setOptions(values, labels) {
+                this.items = values.map((v, i) => ({
+                    value: String(v),
+                    label: labels ? String(labels[i]) : String(v)
+                }));
+                this._build();
+                if (this.value && !this.items.find(o => o.value === this.value)) {
+                    this.value = this.items[0]?.value || null;
+                }
+                this._sync();
+            }
+
+            select(val, silent) {
+                val = String(val);
+                if (this.value === val) { this.close(); return; }
+                this.value = val;
+                this._sync();
+                this.close();
+                if (!silent && this._onChange) this._onChange(val);
+            }
+
+            open() {
+                allDropdowns.forEach(d => { if (d !== this) d.close(); });
+                this._open = true;
+                this.trigger.classList.add('open');
+                this.menu.classList.add('visible');
+                this.menu.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+            }
+
+            close() {
+                this._open = false;
+                this.trigger.classList.remove('open');
+                this.menu.classList.remove('visible');
+            }
+
+            _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+            _build() {
+                this.menu.innerHTML = this.items.map(o =>
+                    this._renderItem
+                        ? `<li>${this._renderItem(o)}</li>`
+                        : `<li><button type="button" class="dropdown-item" data-value="${this._esc(o.value)}" role="option">${ICONS.check}<span>${this._esc(o.label)}</span></button></li>`
+                ).join('');
+            }
+
+            _sync() {
+                const match = this.items.find(o => o.value === this.value);
+                this.trigger.querySelector('.dropdown-trigger-text').textContent = match ? match.label : 'Select…';
+                this.menu.querySelectorAll('.dropdown-item').forEach(el =>
+                    el.classList.toggle('active', el.dataset.value === this.value)
+                );
+            }
+        }
+
+        document.addEventListener('click', () => allDropdowns.forEach(d => d.close()));
+
+        // ── Theme definitions ──
+        const LIGHT = { bg: '#ffffff', fg: '#1f2328', accent: '#0969da', muted: '#656d76', surface: '#f6f8fa', border: '#d0d7de', line: '#0969da' };
+        const DARK = { bg: '#0d1117', fg: '#e6edf3', accent: '#58a6ff', muted: '#8b949e', surface: '#161b22', border: '#30363d', line: '#58a6ff' };
+
+        const THEMES = {
+            'Light':        { ...LIGHT, bold: false },
+            'Light — Bold': { ...LIGHT, bold: true },
+            'Dark':         { ...DARK, bold: false },
+            'Dark — Bold':  { ...DARK, bold: true },
+        };
+
+        function resolveThemeColors(name, transparent) {
+            const bm = window.beautifulMermaid;
+            const baseName = name.replace(' — Bold', '').toLowerCase();
+            let colors = bm?.THEMES?.[baseName] || bm?.THEMES?.['github-' + baseName] || THEMES[name] || THEMES['Light'];
+            const { bold, ...clean } = { ...colors };
+            if (transparent) { clean.bg = 'transparent'; clean.transparent = true; }
+            return clean;
+        }
+
+        function isLightTheme(name) {
+            const hex = (resolveThemeColors(name, false).bg || '#ffffff').replace('#', '');
+            if (hex.length >= 6) {
+                const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
+                return (r * 0.299 + g * 0.587 + b * 0.114) > 128;
+            }
+            return /light|latte|dawn|paper/i.test(name);
+        }
+
+        // ── Bold theme enhancements ──
+        function applyBoldEnhancements(svg) {
+            if (!svg) return;
+            const SCALE = 1.3, STROKE_BOOST = 2.0, MIN_STROKE = 2.5;
+
+            // Parse viewBox
+            let [vbX, vbY, vbW, vbH] = [0, 0, 0, 0];
+            const vb = svg.getAttribute('viewBox');
+            if (vb) {
+                const p = vb.trim().split(/[\s,]+/).map(Number);
+                if (p.length === 4 && p.every(isFinite)) [vbX, vbY, vbW, vbH] = p;
+            }
+            if (!vbW || !vbH) {
+                vbW = parseFloat(svg.getAttribute('width') || '800');
+                vbH = parseFloat(svg.getAttribute('height') || '600');
+            }
+
+            // Wrap content in a scaled group
+            const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            wrapper.setAttribute('transform', `scale(${SCALE})`);
+            [...svg.childNodes].forEach(child => {
+                if (child.nodeType !== 1) { wrapper.appendChild(child); return; }
+                const tag = child.tagName?.toLowerCase();
+                if (tag !== 'defs' && tag !== 'style') wrapper.appendChild(child);
+            });
+            svg.appendChild(wrapper);
+
+            // Expand viewBox
+            const newW = Math.ceil(vbW * SCALE), newH = Math.ceil(vbH * SCALE);
+            svg.setAttribute('viewBox', `${vbX} ${vbY} ${newW} ${newH}`);
+            if (svg.hasAttribute('width')) svg.setAttribute('width', String(newW));
+            if (svg.hasAttribute('height')) svg.setAttribute('height', String(newH));
+
+            // Global stroke CSS
+            const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+            style.textContent = `line, path, polyline, polygon, circle, ellipse, rect { stroke-width: ${MIN_STROKE} !important; }`;
+            svg.insertBefore(style, svg.firstChild);
+
+            // Boost stroked elements
+            const shapeSelector = 'line, path, polyline, polygon, circle, ellipse, rect';
+            svg.querySelectorAll(shapeSelector).forEach(el => {
+                const stroke = el.getAttribute('stroke') || el.style.stroke || '';
+                if (stroke && stroke !== 'none') {
+                    const cur = parseFloat(el.getAttribute('stroke-width') || el.style.strokeWidth || '1');
+                    el.style.strokeWidth = String(Math.round(Math.max(cur * STROKE_BOOST, MIN_STROKE) * 10) / 10);
+                }
+            });
+
+            // Scale arrow markers
+            svg.querySelectorAll('marker').forEach(marker => {
+                ['markerWidth', 'markerHeight'].forEach(attr => {
+                    const v = parseFloat(marker.getAttribute(attr) || '0');
+                    if (v > 0) marker.setAttribute(attr, String(Math.round(v * 1.6)));
+                });
+                marker.querySelectorAll('path, polygon, line').forEach(el => {
+                    const cur = parseFloat(el.getAttribute('stroke-width') || '1');
+                    el.setAttribute('stroke-width', String(Math.max(cur * 1.8, 1.5)));
+                });
+            });
+
+            // Bold all text
+            svg.querySelectorAll('text, tspan').forEach(el => {
+                el.style.fontWeight = '700';
+                el.setAttribute('font-weight', '700');
+            });
+            svg.querySelectorAll('foreignObject div, foreignObject span, .label, .nodeLabel').forEach(el => {
+                el.style.fontWeight = '700';
+            });
+        }
+
+        function applyBoldToMarkup(markup) {
+            const tmp = document.createElement('div');
+            tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden';
+            document.body.appendChild(tmp);
+            tmp.innerHTML = markup;
+            const svg = tmp.querySelector('svg');
+            if (svg) applyBoldEnhancements(svg);
+            const result = svg ? new XMLSerializer().serializeToString(svg) : markup;
+            tmp.remove();
+            return result;
+        }
+
+        // ── Constants & samples ──
+        const STORAGE_KEY = 'bm-viewer-v9';
+        const CDN_URLS = [
+            'https://cdn.jsdelivr.net/npm/beautiful-mermaid@1/dist/beautiful-mermaid.browser.global.js',
+            'https://unpkg.com/beautiful-mermaid@1/dist/beautiful-mermaid.browser.global.js',
+            'https://cdn.jsdelivr.net/npm/beautiful-mermaid/dist/beautiful-mermaid.browser.global.js',
+            'https://unpkg.com/beautiful-mermaid/dist/beautiful-mermaid.browser.global.js'
+        ];
+
+        const SAMPLES = {
+            Flowchart: `graph TD
+  A[User uploads Mermaid file] --> B{Valid syntax?}
+  B -->|Yes| C[Render with beautiful-mermaid]
+  B -->|No| D[Show error panel]
+  C --> E[Preview SVG]
+  E --> F[Export SVG and PNG]`,
+            Sequence: `sequenceDiagram
+  participant U as User
+  participant A as App
+  participant B as beautiful-mermaid
+  U->>A: Paste Mermaid code
+  A->>B: Render diagram
+  B-->>A: SVG markup
+  A-->>U: Live preview`,
+            State: `stateDiagram-v2
+  [*] --> Idle
+  Idle --> Loading: Render requested
+  Loading --> Ready: SVG generated
+  Loading --> Error: Invalid Mermaid
+  Ready --> Loading: Update code
+  Error --> Loading: Fix code`,
+            Class: `classDiagram
+  class MermaidViewer {
+    +string code
+    +string theme
+    +number zoomPercent
+    +render()
+    +downloadSVG()
+    +downloadPNG()
+  }
+  class BeautifulMermaid {
+    +renderMermaidSVG()
+    +THEMES
+  }
+  MermaidViewer --> BeautifulMermaid : uses`,
+            ER: `erDiagram
+  FILE ||--o{ DIAGRAM : contains
+  DIAGRAM ||--|| THEME : uses
+  DIAGRAM ||--o| EXPORT : produces
+  FILE { string name  string extension }
+  DIAGRAM { string code  string svg  string status }
+  THEME { string id  string bg  string fg }`
+        };
+
+        // ── App state ──
+        const state = {
+            libReady: false, libSource: '',
+            code: SAMPLES.Flowchart, theme: 'Light',
+            fileName: 'diagram.mmd', sample: 'Flowchart',
+            autoRender: true, transBg: false, transPng: true,
+            pngScale: 2, zoom: 100,
+            svg: '', error: '', rendering: false, token: 0
+        };
+
+        // ── DOM refs ──
+        const $ = id => document.getElementById(id);
+        const el = {
+            uploadBtn: $('uploadBtn'), fileInput: $('fileInput'),
+            renderBtn: $('renderBtn'), copyBtn: $('copyBtn'),
+            dlSvg: $('downloadSvgBtn'), dlPng: $('downloadPngBtn'),
+            fileName: $('fileNameInput'),
+            zoomRange: $('zoomRange'), zoomVal: $('zoomValue'),
+            zoomOut: $('zoomOutBtn'), zoomReset: $('zoomResetBtn'), zoomIn: $('zoomInBtn'),
+            autoRender: $('autoRenderToggle'), transBg: $('transparentToggle'), transPng: $('transparentPngToggle'),
+            code: $('codeInput'),
+            prevMsg: $('previewMessage'),
+            statusChip: $('statusChip'), statusText: $('statusText'),
+            errBox: $('errorBox'), errText: $('errorText'),
+            preview: $('preview'), empty: $('emptyState'), stage: $('diagramStage'),
+            themeStat: $('themeStat'), srcStat: $('sourceStat')
+        };
+
+        // ── Utilities ──
+        const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+
+        function sanitize(name) {
+            return (name || 'diagram').replace(/\.[^.]+$/, '').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'diagram';
+        }
+
+        function loadState() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                if (saved) Object.assign(state, saved);
+            } catch (_) {}
+        }
+
+        function saveState() {
+            const keys = ['code', 'theme', 'fileName', 'sample', 'autoRender', 'transBg', 'transPng', 'pngScale', 'zoom'];
+            const data = {};
+            keys.forEach(k => data[k] = state[k]);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        // ── UI updates ──
+        function setStatus(kind, text) {
+            el.statusText.textContent = text;
+            el.statusChip.className = 'status-chip ' + kind;
+        }
+
+        function setLibReady(ready, source) {
+            state.libReady = ready;
+            state.libSource = source || '';
+            el.renderBtn.disabled = !ready;
+            if (!ready) el.copyBtn.disabled = el.dlSvg.disabled = el.dlPng.disabled = true;
+            el.srcStat.textContent = source || 'Not loaded yet';
+        }
+
+        function showError(msg) {
+            state.error = msg || '';
+            el.errBox.classList.toggle('hidden', !msg);
+            el.errText.textContent = msg || '';
+        }
+
+        function updatePreviewBg() {
+            el.stage.style.background = resolveThemeColors(state.theme, false).bg || '#ffffff';
+        }
+
+        function updateZoom() {
+            const z = state.zoom = clamp(state.zoom || 100, 25, 300);
+            el.zoomRange.value = z;
+            el.zoomVal.value = z + '%';
+            el.stage.style.transform = `scale(${z / 100})`;
+            el.zoomReset.textContent = z + '%';
+        }
+
+        function setZoom(v) {
+            state.zoom = clamp(v || 100, 25, 300);
+            updateZoom();
+            saveState();
+        }
+
+        function showSvg(svg) {
+            state.svg = svg || '';
+            el.copyBtn.disabled = el.dlSvg.disabled = el.dlPng.disabled = !svg;
+
+            if (svg) {
+                el.preview.classList.remove('hidden');
+                el.empty.classList.add('hidden');
+                el.stage.innerHTML = svg;
+
+                if (THEMES[state.theme]?.bold) {
+                    const svgEl = el.stage.querySelector('svg');
+                    if (svgEl) {
+                        applyBoldEnhancements(svgEl);
+                        state.svg = new XMLSerializer().serializeToString(svgEl);
+                    }
+                }
+                updateZoom();
+                updatePreviewBg();
+            } else {
+                el.preview.classList.add('hidden');
+                el.stage.innerHTML = '';
+                el.empty.classList.remove('hidden');
+            }
+        }
+
+        function syncUI() {
+            el.code.value = state.code;
+            el.fileName.value = state.fileName;
+            el.autoRender.checked = state.autoRender;
+            el.transBg.checked = state.transBg;
+            el.transPng.checked = state.transPng;
+            el.themeStat.textContent = state.theme;
+            el.srcStat.textContent = state.libSource || 'Not loaded yet';
+
+            // Sample dropdown
+            ddSample.setOptions(Object.keys(SAMPLES));
+            if (!SAMPLES[state.sample]) state.sample = 'Flowchart';
+            ddSample.select(state.sample, true);
+
+            // Theme dropdown
+            const themeNames = Object.keys(THEMES);
+            ddTheme.setOptions(themeNames);
+            if (!themeNames.includes(state.theme)) state.theme = themeNames[0];
+            ddTheme.select(state.theme, true);
+
+            // Scale dropdown
+            ddScale.setOptions(['1', '2', '3', '4'], ['1×', '2×', '3×', '4×']);
+            ddScale.select(String(state.pngScale || 2), true);
+
+            updateZoom();
+            updatePreviewBg();
+        }
+
+        // ── Dropdowns ──
+        const ddTheme = new Dropdown($('themeDropdown'), {
+            onChange(v) {
+                state.theme = v;
+                el.themeStat.textContent = v;
+                updatePreviewBg();
+                saveState();
+                setStatus('loading', 'Rendering');
+                el.prevMsg.textContent = `Applying theme "${v}"…`;
+                doRender();
+            },
+            renderItem(o) {
+                const c = THEMES[o.value] || { bg: '#fff', fg: '#000', accent: '#888' };
+                return `<button type="button" class="dropdown-item" data-value="${o.value}" role="option">
+                    ${ICONS.check}
+                    <span class="dropdown-item-swatch" style="background: linear-gradient(135deg, ${c.bg} 50%, ${c.accent || c.fg} 50%)"></span>
+                    <span>${o.label}</span>
+                </button>`;
+            }
+        });
+
+        const ddSample = new Dropdown($('sampleDropdown'), {
+            onChange(v) {
+                state.sample = v;
+                state.code = SAMPLES[v];
+                state.fileName = `${sanitize(v)}.mmd`;
+                syncUI();
+                saveState();
+                scheduleAutoRender();
+            }
+        });
+
+        const ddScale = new Dropdown($('scaleDropdown'), {
+            onChange(v) { state.pngScale = clamp(+v || 2, 1, 4); saveState(); }
+        });
+
+        // ── Library loading ──
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                if (window.beautifulMermaid) return resolve(src);
+                const s = document.createElement('script');
+                s.src = src; s.defer = true;
+                s.onload = () => window.beautifulMermaid ? resolve(src) : reject(new Error(`Loaded ${src} but global missing.`));
+                s.onerror = () => reject(new Error(`Failed: ${src}`));
+                document.head.appendChild(s);
+            });
+        }
+
+        async function ensureLib() {
+            if (window.beautifulMermaid) { syncUI(); setLibReady(true, 'window.beautifulMermaid'); return; }
+            const errors = [];
+            for (const src of CDN_URLS) {
+                try {
+                    const loaded = await loadScript(src);
+                    syncUI();
+                    setLibReady(true, loaded);
+                    return loaded;
+                } catch (e) { errors.push(e.message); }
+            }
+            setLibReady(false);
+            throw new Error('Could not load beautiful-mermaid.\n' + errors.join('\n'));
+        }
+
+        // ── Rendering ──
+        async function renderLib(code, theme, transparent) {
+            await ensureLib();
+            const bm = window.beautifulMermaid;
+            const fn = bm?.renderMermaidSVG || bm?.renderMermaid;
+            if (!fn) throw new Error('No render function found.');
+            const colors = resolveThemeColors(theme, transparent);
+            const result = fn(code, colors);
+            return typeof result?.then === 'function' ? await result : result;
+        }
+
+        async function doRender() {
+            const tok = ++state.token;
+            state.rendering = true;
+            setStatus('loading', 'Rendering');
+            el.prevMsg.textContent = state.libReady ? 'Rendering…' : 'Loading library…';
+            showError('');
+
+            try {
+                const svg = await renderLib(state.code, state.theme, state.transBg);
+                if (tok !== state.token) return;
+                showSvg(svg);
+                setStatus('ready', 'Ready');
+                el.prevMsg.textContent = `Rendered — theme "${state.theme}"`;
+            } catch (e) {
+                if (tok !== state.token) return;
+                showSvg('');
+                showError(e.message || String(e));
+                el.empty.textContent = 'Diagram could not be rendered.';
+                setStatus('error', 'Error');
+                el.prevMsg.textContent = 'Source error or renderer unavailable.';
+            } finally {
+                if (tok === state.token) state.rendering = false;
+            }
+        }
+
+        let debounceTimer = null;
+        function scheduleAutoRender() {
+            if (!state.autoRender) return;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => doRender(), 250);
+        }
+
+        // ── File & export ──
+        async function handleFile(f) {
+            if (!f) return;
+            state.code = await f.text();
+            state.fileName = f.name;
+            state.sample = 'Flowchart';
+            syncUI();
+            saveState();
+            scheduleAutoRender();
+        }
+
+        function downloadSvg() {
+            if (!state.svg) return;
+            const blob = new Blob([state.svg], { type: 'image/svg+xml;charset=utf-8' });
+            downloadBlob(blob, sanitize(state.fileName) + '.svg');
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function parseSvgDimensions(markup) {
+            const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+            const svg = doc.querySelector('svg');
+            if (!svg) return null;
+            const vb = svg.getAttribute('viewBox');
+            if (vb) {
+                const p = vb.trim().split(/\s+/).map(Number);
+                if (p.length === 4 && isFinite(p[2]) && isFinite(p[3])) return { w: p[2], h: p[3] };
+            }
+            const w = parseFloat(svg.getAttribute('width') || '0');
+            const h = parseFloat(svg.getAttribute('height') || '0');
+            return w > 0 && h > 0 ? { w, h } : null;
+        }
+
+        async function svgToPng(markup, scale, transparent) {
+            const encoded = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+            const img = await new Promise((res, rej) => {
+                const i = new Image();
+                i.onload = () => res(i);
+                i.onerror = () => rej(new Error('SVG rasterization failed.'));
+                i.src = encoded;
+            });
+
+            const dims = parseSvgDimensions(markup);
+            const liveSvg = el.stage.querySelector('svg');
+            const vb = liveSvg?.viewBox?.baseVal;
+            let bb = null; try { bb = liveSvg?.getBBox(); } catch (_) {}
+
+            const bw = Math.ceil(dims?.w || vb?.width || bb?.width || liveSvg?.clientWidth || img.naturalWidth || 1200);
+            const bh = Math.ceil(dims?.h || vb?.height || bb?.height || liveSvg?.clientHeight || img.naturalHeight || 800);
+            const s = clamp(scale || 2, 1, 4);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(bw * s));
+            canvas.height = Math.max(1, Math.round(bh * s));
+            const ctx = canvas.getContext('2d');
+            if (!transparent) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+            ctx.setTransform(s, 0, 0, s, 0, 0);
+            ctx.drawImage(img, 0, 0, bw, bh);
+            return canvas.toDataURL('image/png');
+        }
+
+        async function downloadPng() {
+            if (!state.svg) return;
+            let markup;
+            if (state.transPng) {
+                markup = await renderLib(state.code, state.theme, true);
+                if (THEMES[state.theme]?.bold) markup = applyBoldToMarkup(markup);
+            } else {
+                markup = state.svg;
+            }
+            const png = await svgToPng(markup, state.pngScale, state.transPng);
+            const a = Object.assign(document.createElement('a'), {
+                href: png, download: sanitize(state.fileName) + '.png'
+            });
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        async function copySvg() {
+            if (!state.svg) return;
+            await navigator.clipboard.writeText(state.svg);
+            const prev = el.copyBtn.innerHTML;
+            el.copyBtn.innerHTML = ICONS.copied;
+            setTimeout(() => { el.copyBtn.innerHTML = prev; }, 1200);
+        }
+
+        // ── Event bindings ──
+        function bindEvents() {
+            el.uploadBtn.addEventListener('click', () => el.fileInput.click());
+            el.fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+            el.renderBtn.addEventListener('click', () => doRender());
+            el.copyBtn.addEventListener('click', () => copySvg());
+            el.dlSvg.addEventListener('click', downloadSvg);
+            el.dlPng.addEventListener('click', () => downloadPng());
+
+            el.fileName.addEventListener('input', e => { state.fileName = e.target.value; saveState(); });
+            el.zoomRange.addEventListener('input', e => setZoom(+e.target.value));
+            el.zoomOut.addEventListener('click', () => setZoom(state.zoom - 25));
+            el.zoomReset.addEventListener('click', () => setZoom(100));
+            el.zoomIn.addEventListener('click', () => setZoom(state.zoom + 25));
+
+            el.autoRender.addEventListener('change', e => { state.autoRender = e.target.checked; saveState(); });
+            el.transBg.addEventListener('change', e => { state.transBg = e.target.checked; saveState(); doRender(); });
+            el.transPng.addEventListener('change', e => { state.transPng = e.target.checked; saveState(); });
+            el.code.addEventListener('input', e => { state.code = e.target.value; saveState(); scheduleAutoRender(); });
+
+            // Drag & drop
+            document.addEventListener('dragover', e => e.preventDefault());
+            document.addEventListener('drop', e => { e.preventDefault(); handleFile(e.dataTransfer?.files?.[0]); });
+        }
+
+        // ── Init ──
+        async function init() {
+            loadState();
+            if (!SAMPLES[state.sample]) { state.sample = 'Flowchart'; state.code = SAMPLES.Flowchart; }
+            state.zoom = clamp(state.zoom || 100, 25, 300);
+            state.pngScale = clamp(state.pngScale || 2, 1, 4);
+            syncUI();
+            bindEvents();
+
+            setLibReady(false);
+            setStatus('loading', 'Loading');
+            el.prevMsg.textContent = 'Loading beautiful-mermaid from CDN…';
+            el.empty.textContent = 'Loading renderer…';
+
+            try {
+                const src = await ensureLib();
+                setStatus('ready', 'Ready');
+                el.prevMsg.textContent = `Renderer loaded — ${src}`;
+                syncUI();
+                await doRender();
+            } catch (e) {
+                setStatus('error', 'Error');
+                showError(e.message || String(e));
+                el.prevMsg.textContent = 'Could not load renderer from CDN.';
+                el.empty.innerHTML = '<div style="max-width:360px"><strong style="color:var(--text-heading);display:block;margin-bottom:8px">Library failed to load</strong>The beautiful-mermaid package could not be fetched. Try opening this file directly in a browser tab.</div>';
+            }
+        }
+
+        init();
+    })();
+    </script>
+</body>
+</html>
